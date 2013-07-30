@@ -35,6 +35,7 @@ def download(root,config,force=False):
     tools.download(arma_fname,arma_url,dep_download_dir,force)
 
 def prepare(root,config):
+    from os.path import join
     prefix=config.get('Main','prefix')
     dep_build_dir = config.get('Main','dependency_build_dir')
     dep_download_dir=config.get('Main','dependency_download_dir')
@@ -49,8 +50,8 @@ def prepare(root,config):
         # Possibly a corrupted/truncated file. Try to download once again
         download(root,config,force=True)
         tools.extract_file(dep_download_dir+"/"+arma_fname,dep_build_dir)
-    subprocess.check_call("cp -R "+extract_dir+"/include/* "+
-                          prefix+"/bempp/include/",shell=True)
+    tools.copy_files( join(extract_dir, 'include', '*'),
+                      join(prefix, 'bempp', 'include') )
     print "Patching Armadillo"
     patch=py_patch.fromfile(root+"/installer/patches/armadillo_config.patch")
     cwd=os.getcwd()

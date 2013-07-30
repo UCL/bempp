@@ -48,6 +48,7 @@ def download(root,config,force=False):
     tools.download(tbb_fname_short,tbb_url,dep_download_dir,force)
 
 def prepare(root,config):
+    from os.path import join
     dep_build_dir=config.get('Main','dependency_build_dir')
     dep_download_dir=config.get('Main','dependency_download_dir')
     prefix=config.get('Main','prefix')
@@ -62,8 +63,8 @@ def prepare(root,config):
         download(root,config,force=True)
         tools.extract_file(dep_download_dir+"/"+tbb_fname_short,dep_build_dir)
     os.rename(dep_build_dir+"/"+tbb_extract_dir,dep_build_dir+"/tbb")
-    subprocess.check_call("cp -R "+dep_build_dir+"/tbb/include/* "+
-                          prefix+"/bempp/include/",shell=True)
+    tools.copy_files( join(dep_build_dir, 'tbb', 'include', '*'),
+                      join(prefix, 'bempp', 'include') )
 
     if sys.platform.startswith('darwin'):
         libdir_orig = dep_build_dir+"/tbb/lib"
@@ -81,7 +82,7 @@ def prepare(root,config):
     else:
         raise Exception("Platform not supported")
 
-    subprocess.check_call("cp -R "+libdir_orig+"/* "+prefix+"/bempp/lib/",shell=True)
+    tools.copy_files(join(libdir_orig, '*'), join(prefix, 'bempp', 'lib'))
 
     tools.setDefaultConfigOption(config,"Tbb",'lib',prefix+"/bempp/lib/"+tbb_lib_name,overwrite=True)
     tools.setDefaultConfigOption(config,"Tbb","lib_debug",prefix+"/bempp/lib/"+tbb_lib_name_debug,overwrite=True)

@@ -66,7 +66,7 @@ def configure(root,config):
     cwd=os.getcwd()
     os.chdir(swig_full_dir)
     tools.checkDeleteDirectory(swig_full_dir+"/build")
-    subprocess.check_call(["./configure", "--prefix="+swig_prefix,
+    subprocess.check_call(["./configure", "--prefix=" + swig_prefix.replace(' ', '\\ '),
                            "--without-pcre", "--without-tcl",
                            "--without-perl5", "--without-octave",
                            "--without-java", "--without-gcj",

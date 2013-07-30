@@ -114,6 +114,7 @@ def installDependencies(root,config):
 
 
 def prepare(root,config):
+    from os.path import join
     # Test whether the main options are present
     if not config.has_option('Main','prefix'): raise Exception('prefix not defined')
     setDefaultConfigOption(config,'Main','cc','gcc')
@@ -130,14 +131,14 @@ def prepare(root,config):
     optfile = config.get('Main','optfile')
 
     # Retrieve build directory
-    setDefaultConfigOption(config,'Main','build_dir',root+'/build')
+    setDefaultConfigOption(config,'Main','build_dir', join(root, 'build'))
     build_dir = normalizePath(config, config.get('Main','build_dir'))
     # Set build directories for BEM++ and its dependencies
     config.set('Main','build_dir',build_dir)
-    config.set('Bempp','build_dir',build_dir+'/bempp')
-    config.set('Main','dependency_build_dir',build_dir+'/contrib')
+    config.set('Bempp','build_dir', join(build_dir, 'bempp'))
+    config.set('Main','dependency_build_dir', join(build_dir, 'contrib'))
     # Set
-    config.set('Main','dependency_download_dir',root+'/installer/files')
+    config.set('Main','dependency_download_dir', join(root, 'installer', 'files'))
 
     # Set default MKL/libs option
     setDefaultConfigOption(config,'MKL','lib',"-lmkl_rt")

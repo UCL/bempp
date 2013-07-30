@@ -197,6 +197,7 @@ def to_int(s,min_val=1):
 
 def testBlas(root,config):
     """Test if BLAS functions correctly and set whether G77 calling convention is needed"""
+    from os.path import dirname
     cwd = os.getcwd()
     blas = config.get('BLAS','lib')
     cxx=config.get('Main','cxx')
@@ -217,7 +218,15 @@ def testBlas(root,config):
 
     checkCreateDir(root+"/test_blas/build")
     os.chdir(root+"/test_blas/build")
-    config_string = "CC="+cc+" CXX="+cxx+" CFLAGS='"+cflags+"' CXXFLAGS='"+cxxflags+"' "+cmake_exe+" -D BLAS_LIBRARIES:STRING=\""+blas+"\" .."
+    config_string = "PATH=$PATH:{path!r} "                                 \
+                    "CC={cc!r} "                                           \
+                    "CXX={cxx!r} "                                         \
+                    "CFLAGS={cflags!r} "                                   \
+                    "CXXFLAGS={cxxflags!r} "                               \
+                    "cmake -D BLAS_LIBRARIES:STRING={blas!r} .. "          \
+                    .format(path=dirname(cmake_exe), cc=cc, cxx=cxx,
+                            cflags=cflags, cxxflags=cxxflags, blas=blas) 
+
     try:
         check_output(config_string,shell=True,stderr=subprocess.STDOUT)
         check_output("make",stderr=subprocess.STDOUT)
@@ -260,6 +269,7 @@ def testBlas(root,config):
 
 def testLapack(root,config):
     """Test if BLAS functions correctly and set whether G77 calling convention is needed"""
+    from os.path import dirname
     cwd = os.getcwd()
     blas = config.get('BLAS','lib')
     lapack = config.get('LAPACK','lib')
@@ -280,7 +290,16 @@ def testLapack(root,config):
 
     checkCreateDir(root+"/test_lapack/build")
     os.chdir(root+"/test_lapack/build")
-    config_string = "CC="+cc+" CXX="+cxx+" CFLAGS='"+cflags+"' CXXFLAGS='"+cxxflags+"' "+cmake_exe+" -D BLAS_LIBRARIES:STRING=\""+blas+"\" -D LAPACK_LIBRARIES=\""+lapack+"\" .."
+    config_string = "PATH=$PATH:{path!r} "                                 \
+                    "CC={cc!r} "                                           \
+                    "CXX={cxx!r} "                                         \
+                    "CFLAGS={cflags!r} "                                   \
+                    "CXXFLAGS={cxxflags!r} "                               \
+                    "cmake -D BLAS_LIBRARIES:STRING={blas!r} "             \
+                          "-D LAPACK_LIBRARIES:STRING={lapack!r} .. "      \
+                    .format( path=dirname(cmake_exe), cc=cc, cxx=cxx,
+                             cflags=cflags, cxxflags=cxxflags, blas=blas, 
+                             lapack=lapack ) 
     try:
         check_output(config_string,shell=True,stderr=subprocess.STDOUT)
         check_output("make",shell=True,stderr=subprocess.STDOUT)
@@ -422,20 +441,52 @@ def installUpdates(root,config):
         os.chdir(cwd)
         raise Exception("make failed\n")
 
+def copy_files(source, destination):
+    """ Copies src files to destination. 
+ 
+        This routine copies files and directories to an destination directory. It admits a variety
+        of inputs:
+ 
+        >>> copy_file('/copy/all/this/stuff/*', '/to/here')
+        >>> copy_file(['a', 'b'], '/to/here')
+        >>> copy_file('afile', '/to/here')
+        >>> copy_file('/this/that/adirectory', '/to/here')
+    
+        :param source:
+          It can be one of the followin:
+ 
+             - If a list or iterable, then copies each item into destination
+             - If a path to a file then copies that to destination
+             - If a path to a directory, then copies the directory to the destination 
+             - If a string for which no path exists, then assumes it is a glob. 
+        :param destination:
+          Path to a directory. If the directory does not exist, it is created. 
+    """
+    from collections import Iterable
+    from os import makedirs
+    from os.path import exists, isdir, basename, join
+    from glob import iglob
+    from shutil import copytree, copy, rmtree
+ 
+    # If source is a list, then loop over it
+    if not isinstance(source, str):
+        if not isinstance(source, Iterable):
+            raise TypeError('Unexpected type on input of copy_files')
+        for src in source:  copy_files(src, destination)
+        return
+ 
+    # Otherwise, check if source does not exist, then assume it is a glob.
+    if not exists(source):
+        return copy_files(iglob(source), destination)
+ 
+    # checks output is a directory.
+    if not exists(destination): makedirs(destination)
+    elif not isdir(destination):
+        raise IOError('destination ({0}) should be a directory'.format(destination))
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    # Now checks if a directory, in which case do copytree
+    if isdir(source):
+        destdir = join(destination, basename(source))
+        if exists(destdir): rmtree(destdir)
+        copytree(source, destdir)
+    else: copy(source, destination)
