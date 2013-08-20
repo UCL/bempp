@@ -27,27 +27,56 @@ endif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 
 # Files to be included in all tests.
 file(GLOB TEST_MAIN_SOURCES *.cpp)
-file(GLOB TEST_MAIN_HEADERS *.hpp)
 find_subdirectories(${CMAKE_CURRENT_SOURCE_DIR} SUBDIRECTORIES)
 # meshes has no test
 list(REMOVE_ITEM SUBDIRECTORIES "meshes")
 
 foreach(directory ${SUBDIRECTORIES}) 
 
-  # Files for this particular test
-  file(GLOB TEST_SOURCES ${directory}/*.cpp)
-  file(GLOB TEST_HEADERS ${directory}/*.hpp)
-  if(${directory} STREQUAL "space")
-    set(TEST_SOURCES ${TEST_SOURCES} assembly/create_regular_grid.cpp)
+  # Files for this particular test directory
+  file(GLOB TEST_SOURCES ${directory}/test_*.cpp)
+  if("${directory}" STREQUAL "assembly")
+    if(NOT WITH_AHMED)
+      list(REMOVE_ITEM TEST_SOURCES   
+           ${CMAKE_CURRENT_SOURCE_DIR}/assembly/test_aca_mode_assembly.cpp
+           ${CMAKE_CURRENT_SOURCE_DIR}/assembly/test_discrete_aca_boundary_operator.cpp
+           ${CMAKE_CURRENT_SOURCE_DIR}/assembly/test_synthetic_boundary_operator.cpp)
+    endif()
   endif()
-  add_executable(test_${directory} ${TEST_MAIN_SOURCES} ${TEST_SOURCES})
-    
-  target_link_libraries(test_${directory} bempp ${BOOST_UNIT_TEST_LIB})
 
-  add_test(NAME test_${directory} 
-           WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-           COMMAND test_${directory} )
-  set_tests_properties(test_${directory} PROPERTIES ENVIRONMENT ${ENVVARS})
+  foreach(testfile ${TEST_SOURCES})
+    get_filename_component(filename ${testfile} NAME_WE)
+    set(testname ${directory}_${filename})
+
+    # Checks if needs extra files
+    set(ADDITIONAL_SOURCE)
+    file(READ ${testfile} SOURCE_TEXT)
+    if(SOURCE_TEXT MATCHES "createRegularTriangularGrid")
+      set(ADDITIONAL_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/assembly/create_regular_grid.cpp)
+    endif()
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${directory}/${filename}.hpp)
+      file(READ ${CMAKE_CURRENT_SOURCE_DIR}/${directory}/${filename}.hpp HEADER_TEXT)
+    endif()
+    if(NOT "${filename}" STREQUAL "test_grid" )
+      if(SOURCE_TEXT MATCHES "SimpleTriangularGridManager"
+         OR HEADER_TEXT MATCHES "SimpleTriangularGridManager"
+         OR HEADER_TEXT MATCHES "test_grid_view.hpp")
+        set(ADDITIONAL_SOURCE ${ADDITIONAL_SOURCE} ${CMAKE_CURRENT_SOURCE_DIR}/grid/test_grid.cpp)
+      endif()
+    endif()
+    if(SOURCE_TEXT MATCHES "Laplace3dDirichletFixture")
+        set(ADDITIONAL_SOURCE ${ADDITIONAL_SOURCE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/linalg/laplace_3d_dirichlet_fixture.cpp)
+    endif()
+    add_executable(${testname} ${TEST_MAIN_SOURCES} ${testfile} ${ADDITIONAL_SOURCE})
+      
+    target_link_libraries(${testname} bempp ${BOOST_UNIT_TEST_LIB})
+  
+    add_test(NAME ${testname}
+             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+             COMMAND ${testname} )
+    set_tests_properties(${testname} PROPERTIES ENVIRONMENT ${ENVVARS})
+  endforeach()
 endforeach()
 
 # Meshes
